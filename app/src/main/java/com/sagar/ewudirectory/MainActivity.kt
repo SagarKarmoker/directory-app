@@ -9,9 +9,9 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -20,42 +20,45 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Call
+import androidx.compose.material.icons.filled.Email
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.input.KeyboardType.Companion.Uri
-import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.dp
-import androidx.navigation.NavController
-import com.sagar.ewudirectory.ui.theme.EWUDirectoryTheme
-import android.net.Uri
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Call
-import androidx.compose.material.icons.filled.Email
-import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.res.vectorResource
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
+import androidx.navigation.NavController
+import androidx.navigation.NavHostController
+import androidx.navigation.NavType
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
+import com.sagar.ewudirectory.ui.theme.EWUDirectoryTheme
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -64,19 +67,52 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             EWUDirectoryTheme {
-                var selectedTab by remember { mutableStateOf(0) } // Manage tab selection
+                var selectedTab by remember { mutableIntStateOf(0) } // Manage tab selection
+                val navController = rememberNavController()
 
                 Scaffold(
                     modifier = Modifier.fillMaxSize(),
                     bottomBar = {
                         BottomNavigationBar(selectedTab = selectedTab) { tab ->
                             selectedTab = tab
+                            // Navigate to the appropriate screen based on the selected tab
+                            when (tab) {
+                                0 -> navController.navigate("home") { launchSingleTop = true } // Ensure navigating to home only once
+                                1 -> navController.navigate("home") { launchSingleTop = true }
+                            }
                         }
                     }
                 ) { innerPadding ->
-                    when (selectedTab) {
-                        0 -> FavoritesScreen(innerPadding) // Show the Favorites screen
-                        1 -> ContactsScreen(innerPadding)  // Show the Contacts screen
+                    NavHost(
+                        navController = navController,
+                        startDestination = "home"
+                    ) {
+                        composable("home") {
+                            when (selectedTab) {
+                                0 -> FavoritesScreen(innerPadding, navController)
+                                1 -> ContactsScreen(innerPadding, navController)
+                            }
+                        }
+
+                        // Detail screen route
+                        composable(
+                            "facultyDetail/{name}/{department}/{email}/{phoneNumber}",
+                            arguments = listOf(
+                                navArgument("name") { type = NavType.StringType },
+                                navArgument("department") { type = NavType.StringType },
+                                navArgument("email") { type = NavType.StringType },
+                                navArgument("phoneNumber") { type = NavType.StringType }
+                            )
+                        ) { backStackEntry ->
+                            FacultyDetailScreen(
+                                name = backStackEntry.arguments?.getString("name") ?: "",
+                                department = backStackEntry.arguments?.getString("department") ?: "",
+                                email = backStackEntry.arguments?.getString("email") ?: "",
+                                phoneNumber = backStackEntry.arguments?.getString("phoneNumber") ?: "",
+                                imageResId = R.drawable.ic_launcher_background,
+                                onBackClick = { navController.popBackStack() }
+                            )
+                        }
                     }
                 }
             }
@@ -118,8 +154,7 @@ fun BottomNavigationBar(selectedTab: Int, onTabSelected: (Int) -> Unit) {
 
 
 @Composable
-fun FavoritesScreen(innerPadding: PaddingValues) {
-    // Dummy list of favorite faculty members
+fun FavoritesScreen(innerPadding: PaddingValues, navController: NavController) {
     LazyColumn(
         contentPadding = innerPadding,
         verticalArrangement = Arrangement.spacedBy(8.dp)
@@ -130,15 +165,15 @@ fun FavoritesScreen(innerPadding: PaddingValues) {
                 department = "Physics",
                 email = "janesmith@university.edu",
                 phoneNumber = "+987654321",
-                imageResId = R.drawable.ic_launcher_background
+                imageResId = R.drawable.ic_launcher_background,
+                navController = navController
             )
         }
     }
 }
 
 @Composable
-fun ContactsScreen(innerPadding: PaddingValues) {
-    // List of all faculty members
+fun ContactsScreen(innerPadding: PaddingValues, navController: NavController) {
     LazyColumn(
         contentPadding = innerPadding,
         verticalArrangement = Arrangement.spacedBy(8.dp)
@@ -149,12 +184,12 @@ fun ContactsScreen(innerPadding: PaddingValues) {
                 department = "Computer Science",
                 email = "johndoe@university.edu",
                 phoneNumber = "+123456789",
-                imageResId = R.drawable.ic_launcher_background
+                imageResId = R.drawable.ic_launcher_background,
+                navController = navController
             )
         }
     }
 }
-
 
 @Composable
 fun Faculty(
@@ -162,7 +197,8 @@ fun Faculty(
     department: String,
     email: String,
     phoneNumber: String,
-    imageResId: Int
+    imageResId: Int,
+    navController: NavController
 ) {
     val context = LocalContext.current // Access context to start activities
 
@@ -170,63 +206,60 @@ fun Faculty(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 12.dp)
-            .clickable { },
-        shape = RoundedCornerShape(12.dp), // Modern rounded corners
-
+            .clickable {
+                navController.navigate("facultyDetail/$name/$department/$email/$phoneNumber")
+            }, // Navigate to detail screen when card is clicked
+        shape = RoundedCornerShape(12.dp)
     ) {
         Row(
             modifier = Modifier
                 .padding(12.dp),
-            verticalAlignment = Alignment.CenterVertically, // Align contents vertically centered
-            horizontalArrangement = Arrangement.SpaceBetween // Ensure spacing between content
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            // Avatar (Image) with rounded corners
             Image(
                 painter = painterResource(id = imageResId),
                 contentDescription = "Faculty Photo",
                 contentScale = ContentScale.Crop,
                 modifier = Modifier
-                    .size(72.dp) // Size of the avatar
-                    .clip(RoundedCornerShape(12.dp)) // Rounded avatar corners
+                    .size(72.dp)
+                    .clip(RoundedCornerShape(12.dp))
             )
 
-            Spacer(modifier = Modifier.width(16.dp)) // Space between avatar and details
+            Spacer(modifier = Modifier.width(16.dp))
 
-            // Column for faculty details
             Column(
-                modifier = Modifier.weight(1f) // Allow text column to take remaining space
+                modifier = Modifier.weight(1f)
             ) {
                 Text(
                     text = name,
-                    style = MaterialTheme.typography.titleLarge, // Using titleLarge for the name
-                    color = MaterialTheme.colorScheme.primary // Primary color for name text
+                    style = MaterialTheme.typography.titleLarge,
+                    color = MaterialTheme.colorScheme.primary
                 )
                 Text(
                     text = department,
-                    style = MaterialTheme.typography.bodyMedium, // Department text
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f) // Softer text color for department
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
                 )
-                Spacer(modifier = Modifier.height(4.dp)) // Spacing between department and email
+                Spacer(modifier = Modifier.height(4.dp))
                 Text(
                     text = email,
-                    style = MaterialTheme.typography.bodyMedium, // Email text
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f) // Softer text color for email
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
                 )
                 Text(
                     text = phoneNumber,
-                    style = MaterialTheme.typography.bodyMedium, // Phone number text
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f) // Softer text color for phone number
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
                 )
             }
 
-            Spacer(modifier = Modifier.width(16.dp)) // Space between details and buttons
+            Spacer(modifier = Modifier.width(16.dp))
 
-            // Column for call and email buttons, stacked vertically
             Column(
-                horizontalAlignment = Alignment.CenterHorizontally, // Center buttons horizontally
+                horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center
             ) {
-                // Call Button
                 IconButton(onClick = {
                     val intent = Intent(Intent.ACTION_DIAL, android.net.Uri.parse("tel:$phoneNumber"))
                     context.startActivity(intent)
@@ -234,11 +267,10 @@ fun Faculty(
                     Icon(
                         imageVector = Icons.Default.Call,
                         contentDescription = "Call Faculty",
-                        tint = MaterialTheme.colorScheme.primary // Use primary color for icon
+                        tint = MaterialTheme.colorScheme.primary
                     )
                 }
 
-                // Email Button
                 IconButton(onClick = {
                     val emailIntent = Intent(Intent.ACTION_SENDTO).apply {
                         data = android.net.Uri.parse("mailto:$email")
@@ -248,10 +280,122 @@ fun Faculty(
                     Icon(
                         Icons.Default.Email,
                         contentDescription = "Email Faculty",
-                        tint = MaterialTheme.colorScheme.primary // Use primary color for icon
+                        tint = MaterialTheme.colorScheme.primary
                     )
                 }
             }
         }
     }
 }
+
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun FacultyDetailScreen(
+    name: String,
+    department: String,
+    email: String,
+    phoneNumber: String,
+    imageResId: Int,
+    onBackClick: () -> Unit // Callback to handle back button click
+) {
+    Scaffold(
+        topBar = {
+            // Top AppBar with back button and title
+            TopAppBar(
+                title = { Text(text = "Faculty Details", style = MaterialTheme.typography.titleLarge) },
+                navigationIcon = {
+                    IconButton(onClick = onBackClick) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Back"
+                        )
+                    }
+                }
+            )
+        }
+    ) { innerPadding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
+                .padding(16.dp), // Add padding for content
+            horizontalAlignment = Alignment.CenterHorizontally // Center content horizontally
+        ) {
+            // Faculty image with modern styling
+            Image(
+                painter = painterResource(id = imageResId),
+                contentDescription = "Faculty Photo",
+                contentScale = ContentScale.Crop,
+                modifier = Modifier
+                    .size(150.dp)
+                    .clip(RoundedCornerShape(16.dp)) // Rounded corners for a modern look
+            )
+
+            Spacer(modifier = Modifier.height(24.dp)) // Spacing between the image and details
+
+            // Faculty name with large title style
+            Text(
+                text = name,
+                style = MaterialTheme.typography.titleLarge,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
+
+            // Department details with softer color
+            Text(
+                text = department,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+                modifier = Modifier.padding(bottom = 16.dp)
+            )
+
+            // Email section with a clickable row (for future email intent)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    imageVector = Icons.Default.Email,
+                    contentDescription = "Email",
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(20.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = email,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
+                )
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Phone section with a clickable row (for future call intent)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    imageVector = Icons.Default.Call,
+                    contentDescription = "Phone",
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(20.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = phoneNumber,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
+                )
+            }
+        }
+    }
+}
+
+
+//@Preview(showBackground = true)
+//@Composable
+//fun FacultyDetailScreenPreview(){
+//    FacultyDetailScreen(
+//        name = "Dr. John Doe",
+//        department = "Computer Science",
+//        email = "johndoe@university.edu",
+//        phoneNumber = "+123456789",
+//        imageResId = R.drawable.ic_launcher_background
+//    )
+//}
