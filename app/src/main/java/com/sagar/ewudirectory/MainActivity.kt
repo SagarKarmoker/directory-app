@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -42,7 +43,9 @@ import androidx.compose.material3.SearchBar
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -57,6 +60,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
@@ -64,9 +68,14 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.sagar.ewudirectory.data.Faculty
+import com.sagar.ewudirectory.navigation.BottomNavigationBar
+import com.sagar.ewudirectory.ui.screens.ContactsScreen
+import com.sagar.ewudirectory.ui.screens.FacultyDetailScreen
+import com.sagar.ewudirectory.ui.screens.FavoritesScreen
 import com.sagar.ewudirectory.ui.theme.EWUDirectoryTheme
+import com.sagar.ewudirectory.viewmodel.FacultyViewModel
 
-@OptIn(ExperimentalMaterial3Api::class)
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -74,68 +83,32 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             EWUDirectoryTheme {
-                var selectedTab by remember { mutableIntStateOf(0) } // Manage tab selection
+                // Get a ViewModel instance
+                val viewModel: FacultyViewModel = viewModel()
+
+                // Observe state from the ViewModel
+                val selectedTab by viewModel.selectedTab.observeAsState(0)
+                val query by viewModel.query.observeAsState("")
+                val facultyList by viewModel.facultyList.observeAsState(emptyList())
+                val isSearchBarOpen by viewModel.isSearchBarActive.observeAsState()
+
                 val navController = rememberNavController()
 
                 Scaffold(
                     topBar = {
-                        var query by remember { mutableStateOf("") }
-                        var active by remember { mutableStateOf(false) }
-
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth() // Ensure it takes the full width
-                                .padding(horizontal = 12.dp)
-                                .padding(bottom = 8.dp)
-                        ) {
-                            SearchBar(
-                                query = query,
-                                placeholder = {
-                                    Text(text = "Enter Name")
-                                },
-                                onQueryChange = { newQuery ->
-                                    query = newQuery // Update the search query
-                                },
-                                onSearch = {
-                                    // Perform the search action here when the search is triggered
-                                    println("Search triggered with query: $query")
-                                },
-                                active = active,
-                                onActiveChange = { newActiveState ->
-                                    active =
-                                        newActiveState // Update the active state (open/close search)
-                                },
-                                leadingIcon = {
-                                    IconButton(
-                                        onClick = { navController.popBackStack() }
-                                    ) {
-                                        Icon(
-                                            imageVector = Icons.Filled.Search,
-                                            contentDescription = "Back"
-                                        )
-                                    }
-                                },
-                                modifier = Modifier
-                                    .fillMaxWidth() // Ensures the search bar takes the full width of its container
-                            ) {
-                                // Optional: Provide search suggestions or other content here when active
-                                Column(modifier = Modifier.padding(16.dp)) {
-                                    Text("Suggested Item 1")
-                                    Text("Suggested Item 2")
-                                    Text("Suggested Item 3")
-                                }
-                            }
+                        isSearchBarOpen?.let {
+                            SearchBarWithQuery(query, onQueryChange = { viewModel.updateQuery(it) },
+                                it
+                            )
                         }
                     },
                     modifier = Modifier.fillMaxSize(),
                     bottomBar = {
-                        BottomNavigationBar(selectedTab = selectedTab) { tab ->
-                            selectedTab = tab
+                        BottomNavigationBar(selectedTab) { tab ->
+                            viewModel.selectTab(tab)
                             // Navigate to the appropriate screen based on the selected tab
                             when (tab) {
-                                0 -> navController.navigate("home") {
-                                    launchSingleTop = true
-                                } // Ensure navigating to home only once
+                                0 -> navController.navigate("home") { launchSingleTop = true }
                                 1 -> navController.navigate("home") { launchSingleTop = true }
                             }
                         }
@@ -147,12 +120,11 @@ class MainActivity : ComponentActivity() {
                     ) {
                         composable("home") {
                             when (selectedTab) {
-                                0 -> FavoritesScreen(innerPadding, navController)
-                                1 -> ContactsScreen(innerPadding, navController)
+                                0 -> FavoritesScreen(innerPadding, navController, facultyList)
+                                1 -> ContactsScreen(innerPadding, navController, facultyList)
                             }
                         }
 
-                        // Detail screen route
                         composable(
                             "facultyDetail/{name}/{department}/{email}/{phoneNumber}",
                             arguments = listOf(
@@ -164,11 +136,9 @@ class MainActivity : ComponentActivity() {
                         ) { backStackEntry ->
                             FacultyDetailScreen(
                                 name = backStackEntry.arguments?.getString("name") ?: "",
-                                department = backStackEntry.arguments?.getString("department")
-                                    ?: "",
+                                department = backStackEntry.arguments?.getString("department") ?: "",
                                 email = backStackEntry.arguments?.getString("email") ?: "",
-                                phoneNumber = backStackEntry.arguments?.getString("phoneNumber")
-                                    ?: "",
+                                phoneNumber = backStackEntry.arguments?.getString("phoneNumber") ?: "",
                                 imageResId = R.drawable.ic_launcher_background,
                                 onBackClick = { navController.popBackStack() }
                             )
@@ -180,289 +150,38 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-sealed class BottomNavigationTab(val index: Int, val title: String, val icon: ImageVector) {
-    object Favorites : BottomNavigationTab(0, "Favorites", Icons.Default.Favorite)
-    object Contacts : BottomNavigationTab(1, "Contacts", Icons.Default.Person)
-}
-
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun BottomNavigationBar(selectedTab: Int, onTabSelected: (Int) -> Unit) {
-    NavigationBar {
-        NavigationBarItem(
-            icon = {
-                Icon(
-                    imageVector = Icons.Default.Favorite,
-                    contentDescription = "Favorites"
-                )
-            },
-            label = { Text("Favorites") },
-            selected = selectedTab == 0,
-            onClick = { onTabSelected(0) }
-        )
-        NavigationBarItem(
-            icon = {
-                Icon(
-                    imageVector = Icons.Default.Person,
-                    contentDescription = "Contacts"
-                )
-            },
-            label = { Text("Contacts") },
-            selected = selectedTab == 1,
-            onClick = { onTabSelected(1) }
-        )
-    }
-}
-
-
-@Composable
-fun FavoritesScreen(innerPadding: PaddingValues, navController: NavController) {
-    LazyColumn(
-        contentPadding = innerPadding,
-        verticalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        items(2) {
-            Faculty(
-                name = "Dr. Jane Smith",
-                department = "Physics",
-                email = "janesmith@university.edu",
-                phoneNumber = "+987654321",
-                imageResId = R.drawable.ic_launcher_background,
-                navController = navController
-            )
-        }
-    }
-}
-
-@Composable
-fun ContactsScreen(innerPadding: PaddingValues, navController: NavController) {
-    LazyColumn(
-        contentPadding = innerPadding,
-        verticalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        items(10) {
-            Faculty(
-                name = "Dr. John Doe",
-                department = "Computer Science",
-                email = "johndoe@university.edu",
-                phoneNumber = "+123456789",
-                imageResId = R.drawable.ic_launcher_background,
-                navController = navController
-            )
-        }
-    }
-}
-
-@Composable
-fun Faculty(
-    name: String,
-    department: String,
-    email: String,
-    phoneNumber: String,
-    imageResId: Int,
-    navController: NavController
-) {
-    val context = LocalContext.current // Access context to start activities
-
-    Card(
+fun SearchBarWithQuery(query: String, onQueryChange: (String) -> Unit, isSearchBarOpen: Boolean) {
+    Box(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 12.dp)
-            .clickable {
-                navController.navigate("facultyDetail/$name/$department/$email/$phoneNumber")
-            }, // Navigate to detail screen when card is clicked
-        shape = RoundedCornerShape(12.dp)
+            .padding(bottom = 8.dp)
     ) {
-        Row(
-            modifier = Modifier
-                .padding(12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
+        SearchBar(
+            query = query,
+            placeholder = { Text(text = "Enter Name") },
+            onQueryChange = onQueryChange,
+            onSearch = {
+                println("Search triggered with query: $query")
+            },
+            active = isSearchBarOpen,
+            onActiveChange = {},
+            leadingIcon = {
+                Icon(
+                    imageVector = Icons.Filled.Search,
+                    contentDescription = "Search Icon"
+                )
+            },
+            modifier = Modifier.fillMaxWidth()
         ) {
-            Image(
-                painter = painterResource(id = imageResId),
-                contentDescription = "Faculty Photo",
-                contentScale = ContentScale.Crop,
-                modifier = Modifier
-                    .size(72.dp)
-                    .clip(RoundedCornerShape(12.dp))
-            )
-
-            Spacer(modifier = Modifier.width(16.dp))
-
-            Column(
-                modifier = Modifier.weight(1f)
-            ) {
-                Text(
-                    text = name,
-                    style = MaterialTheme.typography.titleLarge,
-                    color = MaterialTheme.colorScheme.primary
-                )
-                Text(
-                    text = department,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = email,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
-                )
-                Text(
-                    text = phoneNumber,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
-                )
-            }
-
-            Spacer(modifier = Modifier.width(16.dp))
-
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center
-            ) {
-                IconButton(onClick = {
-                    val intent =
-                        Intent(Intent.ACTION_DIAL, android.net.Uri.parse("tel:$phoneNumber"))
-                    context.startActivity(intent)
-                }) {
-                    Icon(
-                        imageVector = Icons.Default.Call,
-                        contentDescription = "Call Faculty",
-                        tint = MaterialTheme.colorScheme.primary
-                    )
-                }
-
-                IconButton(onClick = {
-                    val emailIntent = Intent(Intent.ACTION_SENDTO).apply {
-                        data = android.net.Uri.parse("mailto:$email")
-                    }
-                    context.startActivity(emailIntent)
-                }) {
-                    Icon(
-                        Icons.Default.Email,
-                        contentDescription = "Email Faculty",
-                        tint = MaterialTheme.colorScheme.primary
-                    )
-                }
+            // Optional: Provide search suggestions or other content here when active
+            Column(modifier = Modifier.padding(16.dp)) {
+                Text("Suggested Item 1")
+                Text("Suggested Item 2")
+                Text("Suggested Item 3")
             }
         }
     }
 }
-
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun FacultyDetailScreen(
-    name: String,
-    department: String,
-    email: String,
-    phoneNumber: String,
-    imageResId: Int,
-    onBackClick: () -> Unit // Callback to handle back button click
-) {
-    Scaffold(
-        topBar = {
-            // Top AppBar with back button and title
-            TopAppBar(
-                title = {
-                    Text(
-                        text = "Faculty Details",
-                        style = MaterialTheme.typography.titleLarge
-                    )
-                },
-                navigationIcon = {
-                    IconButton(onClick = onBackClick) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back"
-                        )
-                    }
-                }
-            )
-        }
-    ) { innerPadding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
-                .padding(16.dp), // Add padding for content
-            horizontalAlignment = Alignment.CenterHorizontally // Center content horizontally
-        ) {
-            // Faculty image with modern styling
-            Image(
-                painter = painterResource(id = imageResId),
-                contentDescription = "Faculty Photo",
-                contentScale = ContentScale.Crop,
-                modifier = Modifier
-                    .size(150.dp)
-                    .clip(RoundedCornerShape(16.dp)) // Rounded corners for a modern look
-            )
-
-            Spacer(modifier = Modifier.height(24.dp)) // Spacing between the image and details
-
-            // Faculty name with large title style
-            Text(
-                text = name,
-                style = MaterialTheme.typography.titleLarge,
-                color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.padding(bottom = 8.dp)
-            )
-
-            // Department details with softer color
-            Text(
-                text = department,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
-                modifier = Modifier.padding(bottom = 16.dp)
-            )
-
-            // Email section with a clickable row (for future email intent)
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(
-                    imageVector = Icons.Default.Email,
-                    contentDescription = "Email",
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(20.dp)
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = email,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
-                )
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Phone section with a clickable row (for future call intent)
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(
-                    imageVector = Icons.Default.Call,
-                    contentDescription = "Phone",
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(20.dp)
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = phoneNumber,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
-                )
-            }
-        }
-    }
-}
-
-
-//@Preview(showBackground = true)
-//@Composable
-//fun FacultyDetailScreenPreview(){
-//    FacultyDetailScreen(
-//        name = "Dr. John Doe",
-//        department = "Computer Science",
-//        email = "johndoe@university.edu",
-//        phoneNumber = "+123456789",
-//        imageResId = R.drawable.ic_launcher_background
-//    )
-//}
