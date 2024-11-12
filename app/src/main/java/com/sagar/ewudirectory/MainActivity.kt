@@ -40,9 +40,18 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.sagar.ewudirectory.ui.theme.EWUDirectoryTheme
 import android.net.Uri
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Call
 import androidx.compose.material.icons.filled.Email
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -51,33 +60,97 @@ import androidx.compose.ui.res.vectorResource
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge() // Custom function to enable edge-to-edge layout if required
+        enableEdgeToEdge()
 
         setContent {
             EWUDirectoryTheme {
-                // Scaffold with padding to handle insets
+                var selectedTab by remember { mutableStateOf(0) } // Manage tab selection
+
                 Scaffold(
                     modifier = Modifier.fillMaxSize(),
-                    content = { innerPadding ->
-                        // LazyColumn with padding from Scaffold
-                        LazyColumn(
-                            contentPadding = innerPadding, // Pass scaffold padding to LazyColumn
-                            verticalArrangement = Arrangement.spacedBy(12.dp) // Add spacing between items
-                        ) {
-                            // Dummy data for testing
-                            items(10) {
-                                Faculty(
-                                    name = "Dr. John Doe",
-                                    department = "Computer Science",
-                                    email = "johndoe@university.edu",
-                                    phoneNumber = "+123456789",
-                                    imageResId = R.drawable.ic_launcher_background
-                                )
-                            }
+                    bottomBar = {
+                        BottomNavigationBar(selectedTab = selectedTab) { tab ->
+                            selectedTab = tab
                         }
                     }
-                )
+                ) { innerPadding ->
+                    when (selectedTab) {
+                        0 -> FavoritesScreen(innerPadding) // Show the Favorites screen
+                        1 -> ContactsScreen(innerPadding)  // Show the Contacts screen
+                    }
+                }
             }
+        }
+    }
+}
+
+sealed class BottomNavigationTab(val index: Int, val title: String, val icon: ImageVector) {object Favorites : BottomNavigationTab(0, "Favorites", Icons.Default.Favorite)
+    object Contacts : BottomNavigationTab(1, "Contacts", Icons.Default.Person)
+}
+
+@Composable
+fun BottomNavigationBar(selectedTab: Int, onTabSelected: (Int) -> Unit) {
+    NavigationBar {
+        NavigationBarItem(
+            icon = {
+                Icon(
+                    imageVector = Icons.Default.Favorite,
+                    contentDescription = "Favorites"
+                )
+            },
+            label = { Text("Favorites") },
+            selected = selectedTab == 0,
+            onClick = { onTabSelected(0) }
+        )
+        NavigationBarItem(
+            icon = {
+                Icon(
+                    imageVector = Icons.Default.Person,
+                    contentDescription = "Contacts"
+                )
+            },
+            label = { Text("Contacts") },
+            selected = selectedTab == 1,
+            onClick = { onTabSelected(1) }
+        )
+    }
+}
+
+
+@Composable
+fun FavoritesScreen(innerPadding: PaddingValues) {
+    // Dummy list of favorite faculty members
+    LazyColumn(
+        contentPadding = innerPadding,
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        items(2) {
+            Faculty(
+                name = "Dr. Jane Smith",
+                department = "Physics",
+                email = "janesmith@university.edu",
+                phoneNumber = "+987654321",
+                imageResId = R.drawable.ic_launcher_background
+            )
+        }
+    }
+}
+
+@Composable
+fun ContactsScreen(innerPadding: PaddingValues) {
+    // List of all faculty members
+    LazyColumn(
+        contentPadding = innerPadding,
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        items(10) {
+            Faculty(
+                name = "Dr. John Doe",
+                department = "Computer Science",
+                email = "johndoe@university.edu",
+                phoneNumber = "+123456789",
+                imageResId = R.drawable.ic_launcher_background
+            )
         }
     }
 }
@@ -97,7 +170,7 @@ fun Faculty(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 12.dp)
-            .clickable {  },
+            .clickable { },
         shape = RoundedCornerShape(12.dp), // Modern rounded corners
 
     ) {
