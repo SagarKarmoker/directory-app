@@ -9,6 +9,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -81,43 +82,48 @@ class MainActivity : ComponentActivity() {
                         var query by remember { mutableStateOf("") }
                         var active by remember { mutableStateOf(false) }
 
-                        SearchBar(
-                            query = query,
-                            placeholder = {
-                                Text(text = "Enter Name")
-                            },
-                            onQueryChange = { newQuery ->
-                                query = newQuery // Update the search query
-                            },
-                            onSearch = {
-                                // Perform the search action here when the search is triggered
-                                println("Search triggered with query: $query")
-                            },
-                            active = active,
-                            onActiveChange = { newActiveState ->
-                                active =
-                                    newActiveState // Update the active state (open/close search)
-                            },
-                            leadingIcon = {
-                                IconButton(
-                                    onClick = { navController.popBackStack() }
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Filled.Search,
-                                        contentDescription = "Back"
-                                    )
-                                }
-                            },
+                        Box(
                             modifier = Modifier
+                                .fillMaxWidth() // Ensure it takes the full width
                                 .padding(horizontal = 12.dp)
-                                .fillMaxWidth(1f)
-                                .padding(bottom = 10.dp)
+                                .padding(bottom = 8.dp)
                         ) {
-                            // Optional: Provide search suggestions or other content here when active
-                            Column(modifier = Modifier.padding(16.dp)) {
-                                Text("Suggested Item 1")
-                                Text("Suggested Item 2")
-                                Text("Suggested Item 3")
+                            SearchBar(
+                                query = query,
+                                placeholder = {
+                                    Text(text = "Enter Name")
+                                },
+                                onQueryChange = { newQuery ->
+                                    query = newQuery // Update the search query
+                                },
+                                onSearch = {
+                                    // Perform the search action here when the search is triggered
+                                    println("Search triggered with query: $query")
+                                },
+                                active = active,
+                                onActiveChange = { newActiveState ->
+                                    active =
+                                        newActiveState // Update the active state (open/close search)
+                                },
+                                leadingIcon = {
+                                    IconButton(
+                                        onClick = { navController.popBackStack() }
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Filled.Search,
+                                            contentDescription = "Back"
+                                        )
+                                    }
+                                },
+                                modifier = Modifier
+                                    .fillMaxWidth() // Ensures the search bar takes the full width of its container
+                            ) {
+                                // Optional: Provide search suggestions or other content here when active
+                                Column(modifier = Modifier.padding(16.dp)) {
+                                    Text("Suggested Item 1")
+                                    Text("Suggested Item 2")
+                                    Text("Suggested Item 3")
+                                }
                             }
                         }
                     },
