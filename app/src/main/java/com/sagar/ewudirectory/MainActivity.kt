@@ -6,6 +6,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -27,6 +28,7 @@ import androidx.compose.material.icons.filled.Call
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -35,16 +37,19 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SearchBar
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -60,6 +65,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.sagar.ewudirectory.ui.theme.EWUDirectoryTheme
 
+@OptIn(ExperimentalMaterial3Api::class)
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -71,13 +77,59 @@ class MainActivity : ComponentActivity() {
                 val navController = rememberNavController()
 
                 Scaffold(
+                    topBar = {
+                        var query by remember { mutableStateOf("") }
+                        var active by remember { mutableStateOf(false) }
+
+                        SearchBar(
+                            query = query,
+                            placeholder = {
+                                Text(text = "Enter Name")
+                            },
+                            onQueryChange = { newQuery ->
+                                query = newQuery // Update the search query
+                            },
+                            onSearch = {
+                                // Perform the search action here when the search is triggered
+                                println("Search triggered with query: $query")
+                            },
+                            active = active,
+                            onActiveChange = { newActiveState ->
+                                active =
+                                    newActiveState // Update the active state (open/close search)
+                            },
+                            leadingIcon = {
+                                IconButton(
+                                    onClick = { navController.popBackStack() }
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Filled.Search,
+                                        contentDescription = "Back"
+                                    )
+                                }
+                            },
+                            modifier = Modifier
+                                .padding(horizontal = 12.dp)
+                                .fillMaxWidth(1f)
+                                .padding(bottom = 10.dp)
+                        ) {
+                            // Optional: Provide search suggestions or other content here when active
+                            Column(modifier = Modifier.padding(16.dp)) {
+                                Text("Suggested Item 1")
+                                Text("Suggested Item 2")
+                                Text("Suggested Item 3")
+                            }
+                        }
+                    },
                     modifier = Modifier.fillMaxSize(),
                     bottomBar = {
                         BottomNavigationBar(selectedTab = selectedTab) { tab ->
                             selectedTab = tab
                             // Navigate to the appropriate screen based on the selected tab
                             when (tab) {
-                                0 -> navController.navigate("home") { launchSingleTop = true } // Ensure navigating to home only once
+                                0 -> navController.navigate("home") {
+                                    launchSingleTop = true
+                                } // Ensure navigating to home only once
                                 1 -> navController.navigate("home") { launchSingleTop = true }
                             }
                         }
@@ -106,9 +158,11 @@ class MainActivity : ComponentActivity() {
                         ) { backStackEntry ->
                             FacultyDetailScreen(
                                 name = backStackEntry.arguments?.getString("name") ?: "",
-                                department = backStackEntry.arguments?.getString("department") ?: "",
+                                department = backStackEntry.arguments?.getString("department")
+                                    ?: "",
                                 email = backStackEntry.arguments?.getString("email") ?: "",
-                                phoneNumber = backStackEntry.arguments?.getString("phoneNumber") ?: "",
+                                phoneNumber = backStackEntry.arguments?.getString("phoneNumber")
+                                    ?: "",
                                 imageResId = R.drawable.ic_launcher_background,
                                 onBackClick = { navController.popBackStack() }
                             )
@@ -120,7 +174,8 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-sealed class BottomNavigationTab(val index: Int, val title: String, val icon: ImageVector) {object Favorites : BottomNavigationTab(0, "Favorites", Icons.Default.Favorite)
+sealed class BottomNavigationTab(val index: Int, val title: String, val icon: ImageVector) {
+    object Favorites : BottomNavigationTab(0, "Favorites", Icons.Default.Favorite)
     object Contacts : BottomNavigationTab(1, "Contacts", Icons.Default.Person)
 }
 
@@ -261,7 +316,8 @@ fun Faculty(
                 verticalArrangement = Arrangement.Center
             ) {
                 IconButton(onClick = {
-                    val intent = Intent(Intent.ACTION_DIAL, android.net.Uri.parse("tel:$phoneNumber"))
+                    val intent =
+                        Intent(Intent.ACTION_DIAL, android.net.Uri.parse("tel:$phoneNumber"))
                     context.startActivity(intent)
                 }) {
                     Icon(
@@ -303,7 +359,12 @@ fun FacultyDetailScreen(
         topBar = {
             // Top AppBar with back button and title
             TopAppBar(
-                title = { Text(text = "Faculty Details", style = MaterialTheme.typography.titleLarge) },
+                title = {
+                    Text(
+                        text = "Faculty Details",
+                        style = MaterialTheme.typography.titleLarge
+                    )
+                },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
                         Icon(
