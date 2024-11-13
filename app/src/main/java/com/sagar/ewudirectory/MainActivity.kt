@@ -27,6 +27,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Call
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Person
@@ -40,6 +41,7 @@ import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SearchBar
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
@@ -70,6 +72,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.sagar.ewudirectory.data.Faculty
 import com.sagar.ewudirectory.navigation.BottomNavigationBar
+import com.sagar.ewudirectory.ui.screens.ContactCategories
 import com.sagar.ewudirectory.ui.screens.ContactsScreen
 import com.sagar.ewudirectory.ui.screens.FacultyDetailScreen
 import com.sagar.ewudirectory.ui.screens.FavoritesScreen
@@ -77,6 +80,7 @@ import com.sagar.ewudirectory.ui.theme.EWUDirectoryTheme
 import com.sagar.ewudirectory.viewmodel.FacultyViewModel
 
 class MainActivity : ComponentActivity() {
+    @OptIn(ExperimentalMaterial3Api::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -88,21 +92,70 @@ class MainActivity : ComponentActivity() {
 
                 // Observe state from the ViewModel
                 val selectedTab by viewModel.selectedTab.observeAsState(0)
-                val query by viewModel.query.observeAsState("")
+                //val query by viewModel.query.observeAsState("")
                 val facultyList by viewModel.facultyList.observeAsState(emptyList())
-                val isSearchBarOpen by viewModel.isSearchBarActive.observeAsState()
 
                 val navController = rememberNavController()
 
+                var active by remember { mutableStateOf(false) }
+                var query by remember {
+                    mutableStateOf("")
+                }
+
                 Scaffold(
                     topBar = {
-                        isSearchBarOpen?.let {
-                            SearchBarWithQuery(query, onQueryChange = { viewModel.updateQuery(it) },
-                                it
-                            )
+                        Box {
+                            SearchBar(
+                                query = query,
+                                onQueryChange = { query = it },
+                                onSearch = {
+                                    // do something
+                                },
+                                active = active,
+                                onActiveChange = { active = it },
+                                placeholder = {
+                                    Text(text = "Enter Name")
+                                },
+                                leadingIcon = {
+                                    Icon(
+                                        imageVector = Icons.Filled.Search,
+                                        contentDescription = "Search Icon"
+                                    )
+                                },
+                                trailingIcon = {
+                                    if (active)
+                                        IconButton(onClick = {
+                                            active = false
+                                            query = ""
+                                        }) {
+                                            Icon(
+                                                imageVector = Icons.Filled.Close,
+                                                contentDescription = "Search Icon"
+                                            )
+                                        }
+                                    else {
+                                        IconButton(onClick = {
+                                            navController.navigate("home") { launchSingleTop = true }
+                                        }) {
+
+                                        }
+                                    }
+                                },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(bottom = 12.dp)
+                                //.padding(horizontal = 12.dp)
+                            ) {
+                                Column(modifier = Modifier.padding(16.dp)) {
+                                    Text("Suggested Item 1")
+                                    Text("Suggested Item 2")
+                                    Text("Suggested Item 3")
+                                }
+                            }
                         }
                     },
-                    modifier = Modifier.fillMaxSize(),
+                    modifier = Modifier
+                        .fillMaxSize(),
                     bottomBar = {
                         BottomNavigationBar(selectedTab) { tab ->
                             viewModel.selectTab(tab)
@@ -122,6 +175,7 @@ class MainActivity : ComponentActivity() {
                             when (selectedTab) {
                                 0 -> FavoritesScreen(innerPadding, navController, facultyList)
                                 1 -> ContactsScreen(innerPadding, navController, facultyList)
+                                2 -> ContactCategories(innerPadding, navController, facultyList)
                             }
                         }
 
@@ -136,51 +190,17 @@ class MainActivity : ComponentActivity() {
                         ) { backStackEntry ->
                             FacultyDetailScreen(
                                 name = backStackEntry.arguments?.getString("name") ?: "",
-                                department = backStackEntry.arguments?.getString("department") ?: "",
+                                department = backStackEntry.arguments?.getString("department")
+                                    ?: "",
                                 email = backStackEntry.arguments?.getString("email") ?: "",
-                                phoneNumber = backStackEntry.arguments?.getString("phoneNumber") ?: "",
+                                phoneNumber = backStackEntry.arguments?.getString("phoneNumber")
+                                    ?: "",
                                 imageResId = R.drawable.ic_launcher_background,
                                 onBackClick = { navController.popBackStack() }
                             )
                         }
                     }
                 }
-            }
-        }
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun SearchBarWithQuery(query: String, onQueryChange: (String) -> Unit, isSearchBarOpen: Boolean) {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 12.dp)
-            .padding(bottom = 8.dp)
-    ) {
-        SearchBar(
-            query = query,
-            placeholder = { Text(text = "Enter Name") },
-            onQueryChange = onQueryChange,
-            onSearch = {
-                println("Search triggered with query: $query")
-            },
-            active = isSearchBarOpen,
-            onActiveChange = {},
-            leadingIcon = {
-                Icon(
-                    imageVector = Icons.Filled.Search,
-                    contentDescription = "Search Icon"
-                )
-            },
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            // Optional: Provide search suggestions or other content here when active
-            Column(modifier = Modifier.padding(16.dp)) {
-                Text("Suggested Item 1")
-                Text("Suggested Item 2")
-                Text("Suggested Item 3")
             }
         }
     }
